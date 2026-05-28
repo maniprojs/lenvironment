@@ -1,6 +1,4 @@
-use std::{
-    collections::btree_map::Entry, fs, path::PathBuf
-};
+use std::{fs, path::PathBuf};
 
 use anyhow::{Ok, Result};
 use directories::ProjectDirs;

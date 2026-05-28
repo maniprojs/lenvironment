@@ -27,6 +27,26 @@ pub enum Commands {
     List,
     #[command(about = "Remove an environment")]
     Remove {
-        name: String
-    }
+        name: String,
+        #[arg(short, long)]
+        force: bool,
+    },
+    #[command(about = "Start an environment")]
+    Start {
+        name: String,
+    },
+    #[command(about = "Stop an environment")]
+    Stop {
+        name: String,
+    },
+    #[command(about = "Restart an environment")]
+    Restart {
+        name: String,
+    },
+    #[command(about = "Show the status of an environment")]
+    Status {
+        name: String,
+    },
+    #[command(about = "Verify runtime dependencies and environment health")]
+    Doctor,
 }

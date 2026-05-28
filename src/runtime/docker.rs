@@ -2,19 +2,25 @@ use std::process::Command;
 
 use anyhow::{Ok, Result, bail};
 
+use crate::env::Environment;
+
 use super::Runtime;
 
 pub struct DockerRuntime;
 
 impl Runtime for DockerRuntime {
-    fn create(&self, name: &str) -> Result<()> {
+    fn create(&self, env: &Environment) -> Result<()> {
         let status = Command::new("docker")
             .args([
                 "run",
                 "-dit",
+                "--label",
+                "dev.lenv.managed=true",
+                "--label",
+                &format!("dev.lenv.name={}", env.name),
                 "--name",
-                name,
-                "ubuntu:latest",
+                &env.name,
+                &env.image,
                 "bash"
             ])
             .status()?;
@@ -23,7 +29,7 @@ impl Runtime for DockerRuntime {
             bail!("failed to create container");
         }
 
-        println!("Created environment: {}", name);
+        println!("Created environment: {}", &env.name);
 
         Ok(())
     }
@@ -52,16 +58,15 @@ impl Runtime for DockerRuntime {
 
     fn list(&self) -> Result<()> {
 
-        let status = Command::new("docker")
+        let envs = Environment::list()?;
 
-            .args(["ps", "-a"])
-
-            .status()?;
-
-        if !status.success() {
-
-            bail!("failed to list containers");
-
+        for env in envs {
+            println!(
+                "{} ({}) [{}]",
+                env.name,
+                env.runtime,
+                env.image
+            );
         }
 
         Ok(())

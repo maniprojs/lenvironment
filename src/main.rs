@@ -1,5 +1,8 @@
 mod cli;
+mod env;
 mod runtime;
+
+use std::fs;
 
 use anyhow::{Ok, Result};
 use clap::Parser;
@@ -8,6 +11,8 @@ use cli::{Cli, Commands};
 use runtime::docker::DockerRuntime;
 use runtime::Runtime;
 
+use crate::env::Environment;
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -15,7 +20,15 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Create { name } => {
-            runtime.create(&name)?;
+            let env = Environment {
+                name,
+                runtime: "docker".into(),
+                image: "ubuntu:latest".into(),
+            };
+
+            runtime.create(&env)?;
+
+            env.save()?;
         },
         Commands::Enter { name } => {
             runtime.enter(&name)?;
@@ -24,6 +37,7 @@ fn main() -> Result<()> {
             runtime.list()?;
         },
         Commands::Remove { name } => {
+            fs::remove_file(Environment::path(&name)?)?;
             runtime.remove(&name)?;
         }
     }

@@ -10,23 +10,40 @@ pub struct DockerRuntime;
 
 impl Runtime for DockerRuntime {
     fn create(&self, env: &Environment) -> Result<()> {
-        let status = Command::new("docker")
-            .args([
-                "run",
-                "-dit",
-                "--label",
-                "dev.lenv.managed=true",
-                "--label",
-                &format!("dev.lenv.name={}", env.name),
-                "--name",
-                &env.name,
-                &env.image,
-                "bash"
-            ])
-            .status()?;
+        let mut cmd = Command::new("docker");
+
+        cmd.arg("run");
+        cmd.arg("-dit");
+
+        cmd.args([
+            "--label",
+            "dev.lenv.managed=true",
+        ]);
+
+        cmd.args([
+            "--label",
+            &format!("dev.lenv.name={}", env.name),
+        ]);
+
+        cmd.args([
+            "--name",
+            &format!("lenv-{}", env.name)
+        ]);
+
+        for mount in &env.mounts {
+            cmd.args([
+                "-v",
+                &format!("{}:{}", mount.host, mount.container),
+            ]);
+        }
+
+        cmd.arg(&env.image);
+        cmd.arg("bash");
+        
+        let status = cmd.status()?;
 
         if !status.success() {
-            bail!("failed to create container");
+            bail!("failed to create environment")
         }
 
         println!("Created environment: {}", &env.name);
@@ -35,16 +52,20 @@ impl Runtime for DockerRuntime {
     }
 
     fn enter(&self, name: &str) -> Result<()> {
-        let status = Command::new("docker")
-            .args(["exec", "-it", name, "bash"])
+        let container_name = &format!("lenv-{name}").to_string();
+
+        let _ = Command::new("docker")
+            .args(["exec", "-it", container_name, "bash"])
             .status()?;
 
         Ok(())
     }
 
     fn remove(&self, name: &str) -> Result<()> {
+        let container_name = &format!("lenv-{name}").to_string();
+
         let status = Command::new("docker")
-            .args(["rm", "-f", name])
+            .args(["rm", "-f", container_name])
             .status()?;
 
         if !status.success() {

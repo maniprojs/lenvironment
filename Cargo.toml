@@ -3,9 +3,14 @@ name = "lenvironment"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+path = "src/main.rs"
+name = "lenv"
+
 [dependencies]
 anyhow = "1.0.102"
 clap = { version = "4.6.1", features = ["derive"] }
 directories = "6.0.0"
 serde = { version = "1.0.228", features = ["derive"] }
+shellexpand = "3.1.2"
 toml = "1.1.2"

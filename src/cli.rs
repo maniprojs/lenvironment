@@ -14,6 +14,10 @@ pub enum Commands {
     #[command(about = "Create a new environment")]
     Create {
         name: String,
+        #[arg(long)]
+        image: Option<String>,
+        #[arg(long)]
+        mount: Vec<String>
     },
     #[command(about = "Enter an environment")]
     Enter {

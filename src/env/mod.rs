@@ -7,10 +7,17 @@ use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct Mount {
+    pub host: String,
+    pub container: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Environment {
     pub name: String,
     pub runtime: String,
     pub image: String,
+    pub mounts: Vec<Mount>,
 }
 
 impl Environment {

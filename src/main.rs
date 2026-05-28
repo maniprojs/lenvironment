@@ -51,6 +51,7 @@ fn main() -> Result<()> {
                 runtime: "docker".into(),
                 image: image.unwrap_or("ubuntu:latest".into()),
                 mounts,
+                setup: None,
             };
 
             println!("{} {}", "Pulling".blue(), &env.image.blue());
@@ -58,6 +59,8 @@ fn main() -> Result<()> {
             runtime.create(&env)?;
 
             env.save()?;
+
+            runtime.provision(&env)?;
         }
         Commands::Enter { name } => {
             runtime.enter(&name)?;

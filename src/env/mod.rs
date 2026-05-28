@@ -16,6 +16,7 @@ pub struct Environment {
     pub runtime: String,
     pub image: String,
     pub mounts: Vec<Mount>,
+    pub setup: Option<String>,
 }
 
 impl Environment {

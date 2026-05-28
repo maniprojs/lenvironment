@@ -1,6 +1,9 @@
-use std::process::{Command, Stdio};
+use std::{
+    process::{Command, Stdio},
+    time::Duration,
+};
 
-use anyhow::{Ok, Result, bail};
+use anyhow::{Result, bail};
 use colored::Colorize;
 
 use crate::{
@@ -8,9 +11,61 @@ use crate::{
     runtime::{ContainerState, container_name},
 };
 
+use indicatif::{ProgressBar, ProgressStyle};
+
 use super::Runtime;
 
 pub struct DockerRuntime;
+
+enum Distro {
+    Arch,
+    Ubuntu,
+    Alpine,
+}
+
+fn sanitize_username(username: &str) -> String {
+    username
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect()
+}
+
+fn exec(container: &str, command: &str) -> Result<()> {
+    let status = Command::new("docker")
+        .args(["exec", "-i", container, "sh", "-c", command])
+        .stdout(Stdio::null())
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .status()?;
+
+    if !status.success() {
+        bail!("command failed: {}", command);
+    }
+
+    Ok(())
+}
+
+fn spinner(message: &str) -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+
+    pb.set_style(ProgressStyle::with_template("{spinner} {msg}").unwrap());
+
+    pb.set_message(message.to_string());
+
+    pb.enable_steady_tick(Duration::from_millis(100));
+
+    pb
+}
+
+fn detect_distro(image: &str) -> Distro {
+    if image.contains("arch") {
+        Distro::Arch
+    } else if image.contains("alpine") {
+        Distro::Alpine
+    } else {
+        Distro::Ubuntu
+    }
+}
 
 fn docker_state(name: &str) -> Result<ContainerState> {
     let output = Command::new("docker")
@@ -33,6 +88,7 @@ fn docker_state(name: &str) -> Result<ContainerState> {
 
 impl Runtime for DockerRuntime {
     fn create(&self, env: &Environment) -> Result<()> {
+        let pb = spinner("Creating container...");
         let mut cmd = Command::new("docker");
 
         cmd.arg("run");
@@ -54,10 +110,11 @@ impl Runtime for DockerRuntime {
         let status = cmd.status()?;
 
         if !status.success() {
-            bail!("failed to create environment")
+            pb.finish_with_message("✗ Failed to create container".red().to_string());
+            bail!("failed to create container");
         }
 
-        println!("{} {}", "Created environment:".green(), &env.name);
+        pb.finish_with_message("✓ Container created".green().to_string());
 
         Ok(())
     }
@@ -152,5 +209,65 @@ impl Runtime for DockerRuntime {
         }
 
         Ok(())
+    }
+
+    fn provision(&self, env: &Environment) -> Result<()> {
+        let pb = spinner("Installing basic packages...");
+
+        let container = container_name(&env.name);
+        let distro = detect_distro(&env.image);
+        let username = sanitize_username(&whoami::username()?);
+
+        let result: Result<()> = match distro {
+            Distro::Arch => {
+                exec(
+                    &container,
+                    "pacman -Sy --noconfirm \
+                 git sudo curl bash neovim vim nano wget",
+                )?;
+                exec(
+                    &container,
+                    &format!("useradd -m -s /bin/bash {}", username).to_string(),
+                )?;
+
+                Ok(())
+            }
+            Distro::Ubuntu => {
+                exec(&container, "apt update")?;
+                exec(
+                    &container,
+                    "apt install -y \
+                 git sudo curl bash neovim vim nano wget",
+                )?;
+                exec(
+                    &container,
+                    &format!("useradd -m -s /bin/bash {}", username).to_string(),
+                )?;
+
+                Ok(())
+            }
+            Distro::Alpine => {
+                exec(
+                    &container,
+                    "apk add \
+                 git sudo curl bash neovim vim nano wget",
+                )?;
+
+                Ok(())
+            }
+        };
+
+        match result {
+            Ok(_) => {
+                pb.finish_with_message("✓ Installed basic packages".green().to_string());
+
+                Ok(())
+            },
+            Err(err) => {
+                pb.finish_with_message("✗ Installing basic packages failed");
+
+                Err(err)
+            }
+        }
     }
 }

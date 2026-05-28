@@ -34,6 +34,7 @@ pub trait Runtime {
     fn restart(&self, name: &str) -> Result<()>;
     fn state(&self, name: &str) -> Result<ContainerState>;
     fn list(&self) -> Result<()>;
+    fn provision(&self, env: &Environment) -> Result<()>;
 }
 
 pub mod docker;

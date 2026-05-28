@@ -33,10 +33,6 @@ impl Runtime for DockerRuntime {
             .args(["exec", "-it", name, "bash"])
             .status()?;
 
-        if !status.success() {
-            bail!("failed to enter container");
-        }
-
         Ok(())
     }
 

@@ -264,8 +264,8 @@ impl Runtime for DockerRuntime {
                 Ok(())
             },
             Err(err) => {
-                pb.finish_with_message("✗ Installing basic packages failed");
-
+                pb.finish_with_message("✗ Installing basic packages failed".red().to_string());
+                
                 Err(err)
             }
         }

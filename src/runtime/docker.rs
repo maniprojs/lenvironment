@@ -8,7 +8,7 @@ use colored::Colorize;
 
 use crate::{
     env::Environment,
-    runtime::{ContainerState, container_name},
+    runtime::{ContainerState, container_name, provisioning::create_user},
 };
 
 use indicatif::{ProgressBar, ProgressStyle};
@@ -17,10 +17,28 @@ use super::Runtime;
 
 pub struct DockerRuntime;
 
-enum Distro {
+pub enum Distro {
     Arch,
     Ubuntu,
     Alpine,
+}
+
+fn detect_shell(container: &str) -> Result<String> {
+    let shells = ["/bin/bash", "/bin/sh"];
+
+    for shell in shells {
+        let status = Command::new("docker")
+            .args(["exec", container, "test", "-x", shell])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()?;
+
+        if status.success() {
+            return Ok(shell.to_string());
+        }
+    }
+
+    bail!("no usable shell found");
 }
 
 fn sanitize_username(username: &str) -> String {
@@ -30,7 +48,7 @@ fn sanitize_username(username: &str) -> String {
         .collect()
 }
 
-fn exec(container: &str, command: &str) -> Result<()> {
+pub fn exec(container: &str, command: &str) -> Result<()> {
     let status = Command::new("docker")
         .args(["exec", "-i", container, "sh", "-c", command])
         .stdout(Stdio::null())
@@ -105,7 +123,7 @@ impl Runtime for DockerRuntime {
         }
 
         cmd.arg(&env.image);
-        cmd.arg("bash");
+        cmd.arg("sh");
 
         let status = cmd.status()?;
 
@@ -134,8 +152,12 @@ impl Runtime for DockerRuntime {
             }
         }
 
-        let _ = Command::new("docker")
-            .args(["exec", "-it", container_name, "bash"])
+        let shell = detect_shell(&container_name)?;
+
+        let username = sanitize_username(&whoami::username()?);
+
+        Command::new("docker")
+            .args(["exec", "-it", "-u", &username, &container_name, &shell])
             .status()?;
 
         Ok(())
@@ -146,6 +168,7 @@ impl Runtime for DockerRuntime {
 
         let status = Command::new("docker")
             .args(["rm", "-f", container_name])
+            .stdout(Stdio::null())
             .status()?;
 
         if !status.success() {
@@ -223,12 +246,9 @@ impl Runtime for DockerRuntime {
                 exec(
                     &container,
                     "pacman -Sy --noconfirm \
-                 git sudo curl bash neovim vim nano wget",
+                 git sudo curl bash vim nano wget",
                 )?;
-                exec(
-                    &container,
-                    &format!("useradd -m -s /bin/bash {}", username).to_string(),
-                )?;
+                create_user(&container.to_string(), &distro, &username.to_string())?;
 
                 Ok(())
             }
@@ -237,12 +257,9 @@ impl Runtime for DockerRuntime {
                 exec(
                     &container,
                     "apt install -y \
-                 git sudo curl bash neovim vim nano wget",
+                 git sudo curl bash vim nano wget",
                 )?;
-                exec(
-                    &container,
-                    &format!("useradd -m -s /bin/bash {}", username).to_string(),
-                )?;
+                create_user(&container.to_string(), &distro, &username.to_string())?;
 
                 Ok(())
             }
@@ -250,8 +267,10 @@ impl Runtime for DockerRuntime {
                 exec(
                     &container,
                     "apk add \
-                 git sudo curl bash neovim vim nano wget",
+                 git sudo curl bash vim nano wget",
                 )?;
+
+                create_user(&container.to_string(), &distro, &username.to_string())?;
 
                 Ok(())
             }
@@ -262,10 +281,10 @@ impl Runtime for DockerRuntime {
                 pb.finish_with_message("✓ Installed basic packages".green().to_string());
 
                 Ok(())
-            },
+            }
             Err(err) => {
                 pb.finish_with_message("✗ Installing basic packages failed".red().to_string());
-                
+
                 Err(err)
             }
         }

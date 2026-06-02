@@ -54,8 +54,6 @@ fn main() -> Result<()> {
                 setup: None,
             };
 
-            println!("{} {}", "Pulling".blue(), &env.image.blue());
-
             runtime.create(&env)?;
 
             env.save()?;

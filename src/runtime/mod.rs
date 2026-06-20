@@ -35,6 +35,7 @@ pub trait Runtime {
     fn state(&self, name: &str) -> Result<ContainerState>;
     fn list(&self) -> Result<()>;
     fn provision(&self, env: &Environment) -> Result<()>;
+    fn rename(&self, old_name: &str, new_name: &str) -> Result<()>;
 }
 
 pub mod docker;

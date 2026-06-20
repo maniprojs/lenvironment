@@ -42,7 +42,7 @@ pub fn create_user(container: &str, distro: &Distro, username: &str) -> Result<(
 
             exec(
                 &container,
-                r#"echo '%wheel ALL=(ALL) NOPASSWD:ALL ALL' >> /etc/sudoers"#,
+                r#"echo '%wheel ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"#,
             )?;
         }
     }

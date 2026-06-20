@@ -33,7 +33,7 @@ impl Environment {
 
     pub fn save(&self) -> Result<()> {
         let toml = toml::to_string_pretty(self)?;
-        
+
         fs::write(Self::path(&self.name)?, toml)?;
 
         Ok(())
@@ -65,5 +65,9 @@ impl Environment {
         }
 
         Ok(envs)
+    }
+
+    pub fn exists(name: &str) -> Result<bool> {
+        Ok(Self::path(name)?.exists())
     }
 }

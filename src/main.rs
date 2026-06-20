@@ -104,6 +104,9 @@ fn main() -> Result<()> {
             println!("{} {}", "Image:".blue(), env.image);
             println!("{} {:?}", "Status:".blue(), state);
         },
+        Commands::Rename { old_name, new_name } => {
+            runtime.rename(&old_name.to_string(), &new_name.to_string())?;
+        }
         Commands::Doctor => {
             doctor::run()?;
         }

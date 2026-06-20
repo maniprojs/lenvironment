@@ -1,3 +1,5 @@
+pub mod validation;
+
 use std::{
     process::{Command, Stdio},
     time::Duration,
@@ -8,7 +10,10 @@ use colored::Colorize;
 
 use crate::{
     env::Environment,
-    runtime::{ContainerState, container_name, provisioning::create_user},
+    runtime::{
+        ContainerState, container_name, docker::validation::validate_name,
+        provisioning::create_user,
+    },
 };
 
 use indicatif::{ProgressBar, ProgressStyle};
@@ -106,6 +111,8 @@ fn docker_state(name: &str) -> Result<ContainerState> {
 
 impl Runtime for DockerRuntime {
     fn create(&self, env: &Environment) -> Result<()> {
+        // First of all, check the name
+        validate_name(&env.name)?;
         let pb = spinner("Creating container...");
         let mut cmd = Command::new("docker");
 
@@ -230,6 +237,34 @@ impl Runtime for DockerRuntime {
         if !status.success() {
             bail!("failed to restart container");
         }
+
+        Ok(())
+    }
+
+    fn rename(&self, old_name: &str, new_name: &str) -> Result<()> {
+        validate_name(new_name)?;
+
+        let mut env = Environment::load(old_name)?;
+
+        if Environment::exists(new_name)? {
+            bail!("environment '{}' already exists", new_name);
+        }
+
+        Command::new("docker")
+            .args([
+                "rename",
+                &container_name(old_name),
+                &container_name(new_name),
+            ])
+            .status()?;
+
+        env.name = new_name.to_string();
+
+        env.save()?;
+
+        std::fs::remove_file(Environment::path(old_name)?)?;
+
+        println!("{}{}{}{}{}", "Renamed '".green(), old_name.green(), "' to '", new_name.green(), "'");
 
         Ok(())
     }

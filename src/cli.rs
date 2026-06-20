@@ -47,6 +47,10 @@ pub enum Commands {
     Status {
         name: String,
     },
+    Rename {
+        old_name: String,
+        new_name: String,
+    },
     #[command(about = "Verify runtime dependencies and environment health")]
     Doctor,
 }

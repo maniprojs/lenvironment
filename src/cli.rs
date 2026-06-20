@@ -47,6 +47,7 @@ pub enum Commands {
     Status {
         name: String,
     },
+    #[command(about = "Rename an environment")]
     Rename {
         old_name: String,
         new_name: String,

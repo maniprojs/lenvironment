@@ -1,11 +1,9 @@
-use std::{env::consts::OS, fs, os, process::Command, time::Duration};
+use std::{env::consts::OS, fs, process::Command, time::Duration};
 
 use anyhow::Result;
 use colored::Colorize;
 use directories::ProjectDirs;
 use indicatif::{ProgressBar, ProgressStyle};
-
-use crate::runtime::docker;
 
 fn spinner(message: &str) -> ProgressBar {
     let pb = ProgressBar::new_spinner();
